@@ -104,6 +104,7 @@ public class Patient extends Person {
         this.roomnumber = roomnumber;
     }
 
+
     /**
      * adds a treatment to the treatment-list, if it does not already contain it.
      * @param m Treatment
