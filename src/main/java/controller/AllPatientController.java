@@ -44,7 +44,7 @@ public class AllPatientController {
     @FXML
     TextField txtFirstname;
     @FXML
-    TextField txtBirthday;
+    DatePicker datepickerBirthday;
     @FXML
     TextField txtCarelevel;
     @FXML
@@ -184,11 +184,10 @@ public class AllPatientController {
     public void handleAdd() {
         String surname = this.txtSurname.getText();
         String firstname = this.txtFirstname.getText();
-        String birthday = this.txtBirthday.getText();
+        String birthday = this.datepickerBirthday.getValue().toString();
         LocalDate date = DateConverter.convertStringToLocalDate(birthday);
         String carelevel = this.txtCarelevel.getText();
         String room = this.txtRoom.getText();
-
         try {
             Patient p = new Patient(firstname, surname, date, carelevel, room);
             dao.create(p);
@@ -205,7 +204,7 @@ public class AllPatientController {
     private void clearTextfields() {
         this.txtFirstname.clear();
         this.txtSurname.clear();
-        this.txtBirthday.clear();
+        this.datepickerBirthday.getEditor().clear();
         this.txtCarelevel.clear();
         this.txtRoom.clear();
     }

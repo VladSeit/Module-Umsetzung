@@ -1,16 +1,25 @@
 package controller;
 
 import datastorage.ConnectionBuilder;
+import datastorage.DAOFactory;
+import datastorage.TreatmentDAO;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.event.EventHandler;
 import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 
 import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class Main extends Application {
 
@@ -24,14 +33,42 @@ public class Main extends Application {
 
     public void mainWindow() {
         try {
-            FXMLLoader loader = new FXMLLoader(Main.class.getResource("/MainWindowView.fxml"));
-            BorderPane pane = loader.load();
+            // Pruefen, ob es Behandlungen in der Datenbank gibt, die geloescht soll (Echtes Loeschen erst nach 10 Jahren).
+            // java-scheduledexecutorservice ( Siehe : https://stackoverflow.com/questions/20387881/how-to-run-certain-task-every-day-at-a-particular-time-using-scheduledexecutorse)
+            // Bereinigung von Tabelle Behandlung der Datenbank soll jeden Tag am 02:00 anfangen.
+            // Wenn die Tageszeit vor dem Datum von Cron liegt, dann wird Cron morgen durchgefuehrt
+            String timeToStart = "02:00:00";
+            SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd 'at' HH:mm:ss");
+            SimpleDateFormat formatOnlyDay = new SimpleDateFormat("yyyy-MM-dd");
+            Date now = new Date();
+            Date dateToStart = format.parse(formatOnlyDay.format(now) + " at " + timeToStart);
+            long diff = dateToStart.getTime() - now.getTime();
+            if (diff < 0) {
+                // Das Loeschen wird am naeschten Tag durchgefuehrt.
+                Date tomorrow = new Date();
+                Calendar c = Calendar.getInstance();
+                c.setTime(tomorrow);
+                c.add(Calendar.DATE, 1);
+                tomorrow = c.getTime();
+                dateToStart = format.parse(formatOnlyDay.format(tomorrow) + " at " + timeToStart);
+                diff = dateToStart.getTime() - now.getTime();
+            }
+            ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+            scheduler.scheduleAtFixedRate(() -> {
+                        try {
+                            TreatmentDAO tdao = DAOFactory.getDAOFactory().createTreatmentDAO();
+                            tdao.deleteInvalidTreatments();
 
-            Scene scene = new Scene(pane);
-            this.primaryStage.setTitle("NHPlus");
-            this.primaryStage.setScene(scene);
-            this.primaryStage.setResizable(false);
-            this.primaryStage.show();
+                        } catch(Exception ex) {
+                            ex.printStackTrace();
+                        }
+                    }, TimeUnit.MILLISECONDS.toSeconds(diff) ,
+                    24*60*60, TimeUnit.SECONDS
+            );
+
+            Parent root = FXMLLoader.load(getClass().getResource("/LoginView.fxml"));
+            primaryStage.setScene(new Scene(root));
+            primaryStage.show();
 
             this.primaryStage.setOnCloseRequest(new EventHandler<WindowEvent>() {
                 @Override
@@ -41,7 +78,7 @@ public class Main extends Application {
                     System.exit(0);
                 }
             });
-        } catch (IOException e) {
+        } catch (IOException | ParseException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }

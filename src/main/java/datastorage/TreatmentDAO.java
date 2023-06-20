@@ -19,15 +19,15 @@ public class TreatmentDAO extends DAOimp<Treatment> {
 
     @Override
     protected String getCreateStatementString(Treatment treatment) {
-        return String.format("INSERT INTO treatment (pid, treatment_date, begin, end, description, remarks) VALUES " +
-                "(%d, '%s', '%s', '%s', '%s', '%s')", treatment.getPid(), treatment.getDate(),
+        return String.format("INSERT INTO treatment (pid, cgid, treatment_date, begin, end, description, remarks) VALUES " +
+                        "(%d, %d, '%s', '%s', '%s', '%s', '%s')", treatment.getPid(), treatment.getCgid(), treatment.getDate(),
                 treatment.getBegin(), treatment.getEnd(), treatment.getDescription(),
                 treatment.getRemarks());
     }
 
     @Override
     protected String getReadByIDStatementString(long key) {
-        return String.format("SELECT * FROM treatment WHERE tid = %d", key);
+        return String.format("SELECT * FROM treatment WHERE tid = %d AND locked = 'n'", key);
     }
 
     @Override
@@ -36,13 +36,23 @@ public class TreatmentDAO extends DAOimp<Treatment> {
         LocalTime begin = DateConverter.convertStringToLocalTime(result.getString(4));
         LocalTime end = DateConverter.convertStringToLocalTime(result.getString(5));
         Treatment m = new Treatment(result.getLong(1), result.getLong(2),
-                date, begin, end, result.getString(6), result.getString(7));
+                date, begin, end, result.getString(6), result.getString(7), result.getString(9));
         return m;
     }
 
     @Override
     protected String getReadAllStatementString() {
-        return "SELECT * FROM treatment";
+        return "SELECT * FROM treatment WHERE locked = 'n'";
+    }
+
+
+    public List<Treatment> readTreatmentsByCareGiverid(long cgid) throws SQLException {
+        ArrayList<Treatment> list = new ArrayList<Treatment>();
+        Treatment object = null;
+        Statement st = conn.createStatement();
+        ResultSet result = st.executeQuery(getReadAllTreatmentsOfOneCareGiverByPid(cgid));
+        list = getListFromResultSet(result);
+        return list;
     }
 
     @Override
@@ -50,11 +60,11 @@ public class TreatmentDAO extends DAOimp<Treatment> {
         ArrayList<Treatment> list = new ArrayList<Treatment>();
         Treatment t = null;
         while (result.next()) {
-            LocalDate date = DateConverter.convertStringToLocalDate(result.getString(3));
-            LocalTime begin = DateConverter.convertStringToLocalTime(result.getString(4));
-            LocalTime end = DateConverter.convertStringToLocalTime(result.getString(5));
-            t = new Treatment(result.getLong(1), result.getLong(2),
-                    date, begin, end, result.getString(6), result.getString(7));
+            LocalDate date = DateConverter.convertStringToLocalDate(result.getString(4));
+            LocalTime begin = DateConverter.convertStringToLocalTime(result.getString(5));
+            LocalTime end = DateConverter.convertStringToLocalTime(result.getString(6));
+            t = new Treatment(result.getLong(1), result.getLong(2), result.getLong(3),
+                    date, begin, end, result.getString(7), result.getString(8), result.getString(9));
             list.add(t);
         }
         return list;
@@ -63,7 +73,7 @@ public class TreatmentDAO extends DAOimp<Treatment> {
     @Override
     protected String getUpdateStatementString(Treatment treatment) {
         return String.format("UPDATE treatment SET pid = %d, treatment_date ='%s', begin = '%s', end = '%s'," +
-                "description = '%s', remarks = '%s' WHERE tid = %d", treatment.getPid(), treatment.getDate(),
+                        "description = '%s', remarks = '%s' WHERE tid = %d", treatment.getPid(), treatment.getDate(),
                 treatment.getBegin(), treatment.getEnd(), treatment.getDescription(), treatment.getRemarks(),
                 treatment.getTid());
     }
@@ -82,12 +92,60 @@ public class TreatmentDAO extends DAOimp<Treatment> {
         return list;
     }
 
+    public List<Treatment> readTreatmentsByPidUndNid(long pid, long pfleger_id) throws SQLException {
+        ArrayList<Treatment> list = new ArrayList<Treatment>();
+        Treatment object = null;
+        Statement st = conn.createStatement();
+        ResultSet result = st.executeQuery(getReadAllTreatmentsOfByPatientPidAndNurseId(pid, pfleger_id));
+        list = getListFromResultSet(result);
+        return list;
+    }
+
     private String getReadAllTreatmentsOfOnePatientByPid(long pid){
-        return String.format("SELECT * FROM treatment WHERE pid = %d", pid);
+        return String.format("SELECT * FROM treatment WHERE pid = %d AND locked = 'n'", pid);
+    }
+
+    private String getReadAllTreatmentsOfByPatientPidAndNurseId(long pid, long nid){
+        return String.format("SELECT * FROM treatment WHERE pid = %d AND cgid = %d AND locked = 'n'", pid, nid);
+    }
+
+    private String getReadAllTreatmentsOfOneCareGiverByPid(long pid){
+        return String.format("SELECT * FROM treatment WHERE cgid = %d  AND locked = 'n'", pid);
     }
 
     public void deleteByPid(long key) throws SQLException {
         Statement st = conn.createStatement();
         st.executeUpdate(String.format("Delete FROM treatment WHERE pid= %d", key));
+    }
+
+    // Delete treatments with nurse ID
+    public void deleteTreatmentsByNurseId(long cgid) throws SQLException {
+        Statement st = conn.createStatement();
+        st.executeUpdate(String.format("Delete FROM treatment WHERE cgid = %d", cgid));
+    }
+
+    // true (Behandlung ist in der letzeten 10 Jahren) -> sperren  || false (Behandlung ist mehr als 10 Jahren duchgefuehrt)-> loeschen
+    public boolean checkValidityTreatment(Treatment tr) throws SQLException {
+        String query = "SELECT COUNT(*) FROM treatment WHERE CAST(DATEDIFF(CURDATE(), TREATMENT.TREATMENT_DATE)/365.25 as int ) <= 10 AND tid= %d ";
+        Statement st = conn.createStatement();
+        ResultSet result = st.executeQuery(String.format(query, tr.getTid()));
+        result.next();
+        if (result.getInt(1) > 0) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public void lockTreatment(Treatment tr) throws SQLException {
+        Statement st = conn.createStatement();
+        st.executeUpdate(String.format("UPDATE treatment SET locked = 'y' WHERE tid = %d",
+                tr.getTid()));
+    }
+
+    // Delete invalid treatments (Validity date 10 years)
+    public void deleteInvalidTreatments() throws SQLException {
+        Statement st = conn.createStatement();
+        st.executeUpdate(String.format("Delete FROM treatment WHERE CAST(DATEDIFF(CURDATE(), TREATMENT.TREATMENT_DATE)/365.25 as int ) > 10 AND locked = locked = 'y' "));
     }
 }
