@@ -12,6 +12,9 @@ public class Treatment {
     private LocalTime end;
     private String description;
     private String remarks;
+    private long pfid;
+    private String pflegerSurname;
+
 
     public Treatment(long pid, LocalDate date, LocalTime begin,
                      LocalTime end, String description, String remarks) {
@@ -24,7 +27,7 @@ public class Treatment {
     }
 
     public Treatment(long tid, long pid, LocalDate date, LocalTime begin,
-                     LocalTime end, String description, String remarks) {
+                     LocalTime end, String description, String remarks, long pfid, String pflegerSurname) {
         this.tid = tid;
         this.pid = pid;
         this.date = date;
@@ -32,6 +35,8 @@ public class Treatment {
         this.end = end;
         this.description = description;
         this.remarks = remarks;
+        this.pfid=pfid;
+        this.pflegerSurname=pflegerSurname;
     }
 
     public long getTid() {
@@ -85,6 +90,41 @@ public class Treatment {
         this.remarks = remarks;
     }
 
+    public void setTid(long tid) {
+        this.tid = tid;
+    }
+
+    public void setPid(long pid) {
+        this.pid = pid;
+    }
+
+    public void setDate(LocalDate date) {
+        this.date = date;
+    }
+
+    public void setBegin(LocalTime begin) {
+        this.begin = begin;
+    }
+
+    public void setEnd(LocalTime end) {
+        this.end = end;
+    }
+
+    public long getPfid() {
+        return pfid;
+    }
+
+    public void setPfid(long pfid) {
+        this.pfid = pfid;
+    }
+
+    public String getPflegerSurname() {
+        return pflegerSurname;
+    }
+
+    public void setPflegerSurname(String pflegerSurname) {
+        this.pflegerSurname = pflegerSurname;
+    }
     public String toString() {
         return "\nBehandlung" + "\nTID: " + this.tid +
                 "\nPID: " + this.pid +
@@ -92,6 +132,8 @@ public class Treatment {
                 "\nBegin: " + this.begin +
                 "\nEnd: " + this.end +
                 "\nDescription: " + this.description +
-                "\nRemarks: " + this.remarks + "\n";
+                "\nRemarks: " + this.remarks + "\n"+
+                "\nPfID: " + this.pid + "\n"+
+                "\nPleger Surname" + this.pflegerSurname+ "\n";
     }
 }
